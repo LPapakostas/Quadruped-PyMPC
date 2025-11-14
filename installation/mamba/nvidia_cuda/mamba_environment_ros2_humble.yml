@@ -1,7 +1,7 @@
 name: quadruped_pympc_ros2_humble_env
 channels:
 - conda-forge
-- nvidia
+- nvidia/label/cuda-12.4.1
 - robostack-staging
 dependencies:
 - pip
@@ -9,9 +9,8 @@ dependencies:
 - casadi
 - numpy
 - matplotlib
-- jaxlib=*=*cuda*
-- jax
-- cuda-nvcc 
+- nvidia/label/cuda-12.4.0::cuda-nvcc
+- jax[cuda12]
 - meshcat-python 
 - scipy==1.15.1  
 - pinocchio

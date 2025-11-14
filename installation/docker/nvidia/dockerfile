@@ -12,10 +12,22 @@ RUN apt-get update && apt-get install -y python3-tk
 RUN apt-get update && apt-get install -y python3-pip
 RUN apt-get update && apt-get install -y gedit
 
-
 # Install git
 RUN apt-get update && apt-get install -y git
 
+# NVIDIA related 
+RUN apt-get update && apt install -y software-properties-common
+RUN add-apt-repository ppa:oibaf/graphics-drivers -y
+RUN apt update && apt install -y \
+    vainfo \
+    mesa-va-drivers \
+    mesa-utils
+ENV LIBVA_DRIVER_NAME=d3d12
+ENV LD_LIBRARY_PATH=/usr/lib/wsl/lib
+CMD vainfo --display drm --device /dev/dri/card0
+ENV NVIDIA_DRIVER_CAPABILITIES all
+ENV MESA_D3D12_DEFAULT_ADAPTER_NAME=NVIDIA
+ENV LIBGL_ALWAYS_SOFTWARE=1
 
 # Install Miniforge
 RUN apt-get update && \
@@ -27,13 +39,11 @@ RUN apt-get update && \
     conda clean -afy
 
 
-
-RUN git clone https://github.com/iit-DLSLab/Quadruped-PyMPC.git
-RUN cd Quadruped-PyMPC && git submodule update --init --recursive
+COPY . /Quadruped-PyMPC
 # Create a conda environment with the specified name
-RUN cd Quadruped-PyMPC/installation/mamba/integrated_gpu/ && conda env create -f mamba_environment_ros2.yml
+RUN cd Quadruped-PyMPC/installation/mamba/nvidia_cuda/ && conda env create -f mamba_environment_ros2_humble.yml
 
-SHELL ["conda", "run", "-n", "quadruped_pympc_ros2_env", "/bin/bash", "-c"]
+SHELL ["conda", "run", "-n", "quadruped_pympc_ros2_humble_env", "/bin/bash", "-c"]
 
 # Install acados
 RUN cd Quadruped-PyMPC/quadruped_pympc/acados && mkdir -p build
@@ -42,14 +52,20 @@ RUN cd Quadruped-PyMPC/quadruped_pympc/acados/build && make install -j4
 RUN pip install -e ./Quadruped-PyMPC/quadruped_pympc/acados/interfaces/acados_template
 RUN echo 'export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:"/Quadruped-PyMPC/quadruped_pympc/acados/lib"' >> /root/.bashrc
 RUN echo 'export ACADOS_SOURCE_DIR="/Quadruped-PyMPC/quadruped_pympc/acados"' >> /root/.bashrc
+
 # Install Quadruped-PyMPC
 RUN cd Quadruped-PyMPC && pip install -e .
 
-
 # Set the shell to bash and configure the shell prompt and aliases
 RUN echo 'export PS1="\[\e]0;\u@\h: \w\a\]${debian_chroot:+($debian_chroot)}\[\033[01;37m\]\u\[\033[00m\]@\[\033[01;32m\]\h\[\033[00m\]:\[\033[01;34m\]\w\[\033[00m\] "'  >> /root/.bashrc
-RUN echo 'conda activate quadruped_pympc_ros2_env' >> /root/.bashrc
+RUN echo 'conda activate quadruped_pympc_ros2_humble_env' >> /root/.bashrc
+
+# Install Terra Renderer
+WORKDIR /Quadruped-PyMPC
+RUN wget https://github.com/acados/tera_renderer/releases/download/v0.0.34/t_renderer-v0.0.34-linux
+RUN cp /Quadruped-PyMPC/t_renderer-v0.0.34-linux /Quadruped-PyMPC/quadruped_pympc/acados/bin/t_renderer
+RUN chmod +x /Quadruped-PyMPC/quadruped_pympc/acados/bin/t_renderer
 
 # Set the working directory and source the bashrc file
-WORKDIR /home
+WORKDIR /Quadruped-PyMPC
 RUN source /root/.bashrc

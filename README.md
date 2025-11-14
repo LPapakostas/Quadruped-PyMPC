@@ -106,6 +106,63 @@ The first time you run the simulation with acados, in the terminal you will be a
     pip install -e .
     ```
 
+## Docker Installation
+
+### NVIDIA Container Toolkit
+
+The NVIDIA Container Toolkit enables users to build and run GPU-accelerated containers. This toolkit includes a container runtime library and utilities to configure containers to leverage NVIDIA GPUs automatically.
+
+1. Configure the production repository
+   
+    ```
+    curl -fsSL https://nvidia.github.io/libnvidia-container/gpgkey | sudo gpg --dearmor -o /usr/share/keyrings/nvidia-container-toolkit-keyring.gpg \
+    && curl -s -L https://nvidia.github.io/libnvidia-container/stable/deb/nvidia-container-toolkit.list | \
+    sed 's#deb https://#deb [signed-by=/usr/share/keyrings/nvidia-container-toolkit-keyring.gpg] https://#g' | \
+    sudo tee /etc/apt/sources.list.d/nvidia-container-toolkit.list
+    ```
+
+2. Update the packages list from the repository
+    ```
+    sudo apt-get update
+    ```
+
+3. Install the NVIDIA Container Toolkit packages
+    ```
+    sudo apt-get install -y nvidia-container-toolkit
+    ```
+
+4. Configure the container runtime by using the `nvidia-ctk` command so that Docker can use NVIDIA Container Runtime
+   ```
+   sudo nvidia-ctk runtime configure --runtime=docker
+   ```
+
+5. Restart the Docker Daemon
+   ```
+   sudo systemctl restart docker
+   ```
+
+For building a Docker Container, using Dockerfile, run the following command
+```
+docker build . -t quad_mpc_nvidia -f ./installation/docker/nvidia/dockerfile --no-cache
+```
+
+For testing the recently build container, run the following command
+```
+xhost+
+docker run -it --net=host --gpus all -p 3000:3000 \                                    
+    --env="NVIDIA_DRIVER_CAPABILITIES=all" \
+    --env="NVIDIA_VISIBLE_DEVICES=all" \
+    --env="__NV_PRIME_RENDER_OFFLOAD=1" \
+    --env="__GLX_VENDOR_LIBRARY_NAME=nvidia" \
+    --env="DISPLAY" \
+    --env="QT_X11_NO_MITSHM=1" \
+    --env="TERM=xterm-256color" \
+    --volume="/tmp/.X11-unix:/tmp/.X11-unix:rw" \
+    --runtime=nvidia \
+    quad_mpc_nvidia \
+    bash
+```
+
 ## How to run - Simulation
 
 1. activate the conda environment
